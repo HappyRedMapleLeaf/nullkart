@@ -1,0 +1,14 @@
+overall:
+set imu init to use built in hardware filtering
+change initial angle to match init process
+
+host:
+
+mcu:
+move velocity update to main loop
+fix naming conventions
+
+general code:
+comment
+
+mechanical:
