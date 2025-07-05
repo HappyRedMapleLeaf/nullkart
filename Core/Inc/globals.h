@@ -7,21 +7,8 @@
 
 #include <stdbool.h>
 
-#define RATE_AVG_BUF_SIZE 5
-
-volatile int64_t ticks = 0;
-volatile int64_t prev_ticks = 0;
-volatile float tick_rate = 0.0;    // ticks per second
-
-float power = 0.0;
-
 volatile bool txReady = true;
 volatile uint8_t txCount = 0;
-
-volatile float rateAvgBuffer[RATE_AVG_BUF_SIZE];
-volatile float rateAvgSum = 0.0f;
-volatile uint16_t rateAvgIdx = 0;
-volatile float rateAvg = 0.0f;
 
 float target_rate = 0.0;
 

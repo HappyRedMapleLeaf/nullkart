@@ -61,34 +61,26 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
+#define R_DIR_2_Pin GPIO_PIN_0
+#define R_DIR_2_GPIO_Port GPIOC
 #define USART_TX_Pin GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
 #define USART_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
-#define MOTOR1_REV_Pin GPIO_PIN_6
-#define MOTOR1_REV_GPIO_Port GPIOC
-#define MOTOR1_FWD_Pin GPIO_PIN_8
-#define MOTOR1_FWD_GPIO_Port GPIOC
-#define MOTOR1_PWM_Pin GPIO_PIN_9
-#define MOTOR1_PWM_GPIO_Port GPIOC
-#define IMU_SCL_Pin GPIO_PIN_8
-#define IMU_SCL_GPIO_Port GPIOA
+#define R_DIR_1_Pin GPIO_PIN_9
+#define R_DIR_1_GPIO_Port GPIOA
+#define L_DIR_2_Pin GPIO_PIN_10
+#define L_DIR_2_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
-#define IMU_SDA_Pin GPIO_PIN_4
-#define IMU_SDA_GPIO_Port GPIOB
-#define ENC1_A_BLUE_Pin GPIO_PIN_8
-#define ENC1_A_BLUE_GPIO_Port GPIOB
-#define ENC1_A_BLUE_EXTI_IRQn EXTI9_5_IRQn
-#define ENC1_B_WHITE_Pin GPIO_PIN_9
-#define ENC1_B_WHITE_GPIO_Port GPIOB
-#define ENC1_B_WHITE_EXTI_IRQn EXTI9_5_IRQn
+#define L_DIR_1_Pin GPIO_PIN_5
+#define L_DIR_1_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

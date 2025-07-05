@@ -1,4 +1,4 @@
-#include "imu.h"
+#include "imu_drv.h"
 
 #include <math.h>
 
@@ -119,7 +119,7 @@ void IMU_WhoAmIIT(uint8_t * res) {
    HAL_I2C_Mem_Read_IT(&hi2c3, (I2C_ADDRESS << 1) | 1, WHO_AM_I, I2C_MEMADD_SIZE_8BIT, res, 1);
 }
 
-double IMU_Read_Accel(uint8_t axis) {
+float IMU_Read_Accel(uint8_t axis) {
    IMU_Change_User_Bank(0);
 
    uint8_t data[2];
@@ -137,7 +137,7 @@ double IMU_Read_Accel(uint8_t axis) {
    return g * (1 << accel_fs) / 8192.0;
 }
 
-double IMU_Read_Gyro(uint8_t axis) {
+float IMU_Read_Gyro(uint8_t axis) {
    IMU_Change_User_Bank(0);
 
    uint8_t data[2];
@@ -152,7 +152,7 @@ double IMU_Read_Gyro(uint8_t axis) {
 
    int16_t rate = (data[0] << 8) | data[1];
 
-   double gyro_sensitivity = 65.5;
+   float gyro_sensitivity = 65.5;
    if (gyro_fs == 1) {
        gyro_sensitivity = 32.8;
    } else if (gyro_fs == 2) {
@@ -163,7 +163,7 @@ double IMU_Read_Gyro(uint8_t axis) {
    return rate / gyro_sensitivity;
 }
 
-double IMU_Read_Temp() {
+float IMU_Read_Temp() {
    IMU_Change_User_Bank(0);
 
    uint8_t data[2];
@@ -207,7 +207,7 @@ Vec3 IMU_ConvertAccel(uint8_t * data) {
    int16_t y = (data[2] << 8) | data[3];
    int16_t z = (data[4] << 8) | data[5];
 
-   double factor = (1 << accel_fs) / 8192.0 * G_TO_MM_S_2;
+   float factor = (1 << accel_fs) / 8192.0 * G_TO_MM_S_2;
 
    return (Vec3) {
        x * factor,
@@ -236,7 +236,7 @@ void IMU_StartReadGyroAxisIT(uint8_t * data, uint8_t axis) {
 float IMU_ConvertGyroAxis(uint8_t * data) {
     int16_t a = (data[0] << 8) | data[1];
  
-    double gyro_sensitivity = 65.5;
+    float gyro_sensitivity = 65.5;
     if (gyro_fs == 1) {
         gyro_sensitivity = 32.8;
     } else if (gyro_fs == 2) {
@@ -245,7 +245,7 @@ float IMU_ConvertGyroAxis(uint8_t * data) {
         gyro_sensitivity = 8.2;
     }
  
-    double factor = (M_PI / gyro_sensitivity) / 180;
+    float factor = (M_PI / gyro_sensitivity) / 180;
  
     return a * factor;
 }
@@ -259,7 +259,7 @@ Vec3 IMU_ConvertGyro(uint8_t * data) {
    int16_t y = (data[2] << 8) | data[3];
    int16_t z = (data[4] << 8) | data[5];
 
-   double gyro_sensitivity = 65.5;
+   float gyro_sensitivity = 65.5;
    if (gyro_fs == 1) {
        gyro_sensitivity = 32.8;
    } else if (gyro_fs == 2) {
@@ -268,7 +268,7 @@ Vec3 IMU_ConvertGyro(uint8_t * data) {
        gyro_sensitivity = 8.2;
    }
 
-   double factor = (M_PI / gyro_sensitivity) / 180;
+   float factor = (M_PI / gyro_sensitivity) / 180;
 
    return (Vec3) {
        x * factor,

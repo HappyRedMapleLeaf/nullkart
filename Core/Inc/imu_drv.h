@@ -1,5 +1,5 @@
-#ifndef IMU_H
-#define IMU_H
+#ifndef IMU_DRV_H
+#define IMU_DRV_H
 
 #include "math_utils.h"
 
@@ -8,6 +8,10 @@
 #include "stm32f4xx_hal.h"
 
 #define G_TO_MM_S_2 9806.65
+
+typedef struct {
+    I2C_HandleTypeDef *i2c;
+} IMU;
 
 void IMU_Init();
 
@@ -19,13 +23,13 @@ void IMU_WhoAmIIT(uint8_t * res);
 void IMU_Reset();
 
 // return unit: g's
-double IMU_Read_Accel(uint8_t axis);
+float IMU_Read_Accel(uint8_t axis);
 
 // return unit: deg/s
-double IMU_Read_Gyro(uint8_t axis);
+float IMU_Read_Gyro(uint8_t axis);
 
 // return unit: celsius
-double IMU_Read_Temp();
+float IMU_Read_Temp();
 
 // 0b00 = +/- 4g
 // 0b01 = +/- 8g
@@ -56,4 +60,4 @@ float IMU_ConvertGyroAxis(uint8_t * data);
 Vec3 IMU_Read_Gyro_Vec3();
 Vec3 IMU_Read_Accel_Vec3();
 
-#endif /* IMU_H */
+#endif /* IMU_DRV_H */

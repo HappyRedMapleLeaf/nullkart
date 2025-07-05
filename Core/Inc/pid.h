@@ -10,6 +10,6 @@ typedef struct {
     float prev_error;
 } PID_Controller;
 
-float updatePID(PID_Controller * controller, float error, float elapsedTime);
+float updatePID(PID_Controller * controller, float error, float elapsedTime_s);
 
 #endif

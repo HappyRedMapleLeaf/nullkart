@@ -8,4 +8,4 @@ fi
 
 make all || exit 1
 cd ..
-openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program Debug/bike0.elf verify reset exit"
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program Debug/nullkart.elf verify reset exit"
