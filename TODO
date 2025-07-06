@@ -1,14 +1,15 @@
 overall:
-set imu init to use built in hardware filtering
-change initial angle to match init process
+figure out why imu whoami breaks
+give defaults to struct values that should be internal (separate config and instance?)
+add init functions
 
 host:
 
 mcu:
-move velocity update to main loop
-fix naming conventions
+
 
 general code:
+fix naming
 comment
 
 mechanical:

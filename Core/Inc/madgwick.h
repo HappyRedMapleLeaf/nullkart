@@ -10,21 +10,29 @@ typedef struct {
     uint8_t readStatusIMU; // 0 = idle, 1 = reading gyro, 2 = reading accel
 
     uint8_t imu_accel_data[6];
+    uint8_t imu_gyro_data[6];
+
+    GPIO_TypeDef* indicator_GPIO_port;
+    uint16_t indicator_GPIO_pin;
+
+    bool i2cEnable;
+
+    Vec3 gyro_drift; // drift of gyro in rad/s
+    Vec3 accel_drift; // drift of accel in g's
+
+    double madgwick_beta;
+
+    Vec4 dir;
 } MFilt;
 
-void MFilt_init(float sampleFreq);
-void MFilt_update(float gx, float gy, float gz, float ax, float ay, float az);
-void MFilt_get_quaternion(float *q);
+void MFilt_Init(MFilt * mfilt);
 
-void MFilt_I2CCallback(MFilt * mfilt, I2C_HandleTypeDef *hi2c) {
-    if (hi2c->Instance == mfilt->imu->i2c->Instance) {
-        if (mfilt->readStatusIMU == 1) { // reading gyro
-            IMU_StartReadAccelIT(mfilt->imu_accel_data);
-            mfilt->readStatusIMU = 2;
-        } else if (mfilt->readStatusIMU == 2) {
-            mfilt->readStatusIMU = 0;
-        }
-    }
-}
+void MFilt_Update(MFilt * mfilt, float delta_t_s);
+
+void MFilt_I2CCallback(MFilt * mfilt, I2C_HandleTypeDef *hi2c);
+
+void MFilt_Reset(MFilt * mfilt);
+
+void MFilt_StartRead(MFilt * mfilt);
 
 #endif

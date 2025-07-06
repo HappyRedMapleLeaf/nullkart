@@ -4,6 +4,7 @@
 #include "stm32f4xx_hal.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define DEBUG_PRINT(huart, fmt, ...) { \
     char print[128]; \
@@ -24,5 +25,17 @@
 }
 
 int8_t plusmod(int8_t a, int8_t b);
+
+// I think integer wrapping does this for me but uhhhhhhh
+uint32_t timerDiffWrapped(uint32_t a, uint32_t b);
+
+// quick utility function
+// checks whether delay has passed since prevTimer
+// if so, prevTimer is reset
+bool compareTimer(uint32_t * prevTimer, uint32_t delay);
+
+// checks whether condition is met and delay has passed since prevTimer
+// if both are true, prevTimer is reset
+bool compareTimerCond(uint32_t * prevTimer, uint32_t delay, bool condition);
 
 #endif // ifndef COMMON_H
