@@ -29,7 +29,7 @@ DCMotor left_wheel = {
 };
 
 DCMotor right_wheel = {
-    .htim_pwm = &htim2,
+    .htim_pwm = &htim3,
     .pwm_channel = TIM_CHANNEL_2,
     .fwd_GPIO_port = R_DIR_1_GPIO_Port,
     .fwd_GPIO_pin = R_DIR_1_Pin,
@@ -39,6 +39,8 @@ DCMotor right_wheel = {
 
 void user_init() {
     HAL_TIM_Base_Start(&htim5);
+    DCMotor_Start(&left_wheel);
+    DCMotor_Start(&right_wheel);
 }
 
 float power = 0.0;
@@ -59,8 +61,8 @@ void user_loop() {
     // }
     // DCMotor_SetPower(&left_wheel, power);
     // DCMotor_SetPower(&right_wheel, power);
-    DCMotor_SetPower(&left_wheel, 1);
-    DCMotor_SetPower(&right_wheel, 1);
+    DCMotor_SetPower(&left_wheel, 0.1);
+    DCMotor_SetPower(&right_wheel, 0.1);
 
     HAL_Delay(10); // crucially important
     // if the loop is too fast some weird race condition thing happens and the uart transmission messes up

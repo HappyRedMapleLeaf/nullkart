@@ -14,17 +14,41 @@ ctrl s to pause ctrl q to continue
 ctrl a, x, enter
 
 # PIN ASSIGNMENTS
-top right pins:
-PC9 MOTOR1_PWM
-PC8 MOTOR1_FWD
-PB8 ENC1_A_BLUE
-PC6 MOTOR1_REV
-PB9 ENC1_B_WHITE
+Power: E5V
+Ground: everywhere
 
-right rail left column 6th from bottom
-PB4 I2C3_SDA
-8th from bottom
-PA8 I2C3_SCL
+UART: PA2, PA3
+
+BLE:
+PA0 BOOT
+PA1 SPI_CS
+PA5 SPI_CLK (short pins 1-2 of P14)
+PA6 SPI_MISO
+PA7 SPI_MOSI
+PB6 SPI_CS for EEPROM
+PA8 RESET
+
+I2C: PB8, PB9
+
+Left = motor2 on driver, Right = motor1
+
+Motor PWMs (output):
+L PB4 3/1
+R PC7 3/2
+
+Motor GPIOs (output):
+L PB5, PA10
+R PC0, PA9
+
+Encoder GPIOs (input):
+L PC2, PC3
+R PH0, PH1
+
+Servo PWMs (output):
+PB3 2/2
+PB10 2/3
+
+ADCs: PA4 PB0 PC1 (channels 4, 8, 11)
 
 # CONVENTIONS
 CCW is +
