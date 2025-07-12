@@ -1,0 +1,356 @@
+#include "app_bluenrg_2.h"
+
+#include <stdlib.h>
+
+#include "bluenrg1_aci.h"
+#include "bluenrg1_hci_le.h"
+#include "bluenrg1_events.h"
+#include "hci_tl.h"
+#include "hci.h"
+#include "bluenrg_utils.h"
+
+#define PERIPHERAL_PASS_KEY (123456)
+
+/* Private macros ------------------------------------------------------------*/
+#define SENSOR_DEMO_NAME   'B','a','n','a','n','a','s'
+#define BDADDR_SIZE        6
+
+/** @brief Macro that stores Value into a buffer in Little Endian Format (2 bytes)*/
+#define HOST_TO_LE_16(buf, val)    ( ((buf)[0] =  (uint8_t) (val)    ) , \
+                                   ((buf)[1] =  (uint8_t) (val>>8) ) )
+
+/** @brief Macro that stores Value into a buffer in Little Endian Format (4 bytes) */
+#define HOST_TO_LE_32(buf, val)    ( ((buf)[0] =  (uint8_t) (val)     ) , \
+                                   ((buf)[1] =  (uint8_t) (val>>8)  ) , \
+                                   ((buf)[2] =  (uint8_t) (val>>16) ) , \
+                                   ((buf)[3] =  (uint8_t) (val>>24) ) )
+
+#define COPY_UUID_128(uuid_struct, uuid_15, uuid_14, uuid_13, uuid_12, uuid_11, uuid_10, uuid_9, uuid_8, uuid_7, uuid_6, uuid_5, uuid_4, uuid_3, uuid_2, uuid_1, uuid_0) \
+do {\
+    uuid_struct[0] = uuid_0; uuid_struct[1] = uuid_1; uuid_struct[2] = uuid_2; uuid_struct[3] = uuid_3; \
+        uuid_struct[4] = uuid_4; uuid_struct[5] = uuid_5; uuid_struct[6] = uuid_6; uuid_struct[7] = uuid_7; \
+            uuid_struct[8] = uuid_8; uuid_struct[9] = uuid_9; uuid_struct[10] = uuid_10; uuid_struct[11] = uuid_11; \
+                uuid_struct[12] = uuid_12; uuid_struct[13] = uuid_13; uuid_struct[14] = uuid_14; uuid_struct[15] = uuid_15; \
+}while(0)
+
+/* Private variables ---------------------------------------------------------*/
+volatile uint8_t  set_connectable = 1;
+volatile uint16_t connection_handle = 0;
+volatile uint8_t  connected = FALSE;
+volatile uint8_t  pairing = FALSE;
+volatile uint8_t  paired = FALSE;
+uint8_t bdaddr[BDADDR_SIZE];
+
+uint16_t service_hndl, characteristic_hndl;
+Service_UUID_t service_uuid;
+Char_UUID_t char_uuid;
+
+/* Private function prototypes -----------------------------------------------*/
+static void User_Process(void);
+static uint8_t DeviceInit(void);
+void Set_DeviceConnectable(void);
+void APP_UserEvtRx(void *pData);
+tBleStatus Add_Service();
+void Attribute_Modified_Request_CB(uint16_t Connection_Handle, uint16_t attr_handle,
+                                   uint16_t Offset, uint8_t data_length, uint8_t *att_data);
+
+void MX_BlueNRG_2_Init(void) {
+    /* Initialize the peripherals and the BLE Stack */
+    uint8_t ret;
+
+    hci_init(APP_UserEvtRx, NULL);
+
+    /* Init Sensor Device */
+    ret = DeviceInit();
+    if (ret != BLE_STATUS_SUCCESS) {
+        while (1);
+    }
+}
+
+/*
+ * BlueNRG-2 background task
+ */
+void MX_BlueNRG_2_Process(void) {
+    hci_user_evt_proc();
+    User_Process();
+}
+
+uint8_t DeviceInit(void) {
+    uint8_t ret;
+    uint16_t service_handle, dev_name_char_handle, appearance_char_handle;
+    uint8_t device_name[] = {SENSOR_DEMO_NAME};
+    uint8_t bdaddr_len_out;
+    uint8_t config_data_stored_static_random_address = 0x80; /* Offset of the static random address stored in NVM */
+
+    // SW reset
+    hci_reset();
+    
+    // 2s delay required by ST
+    HAL_Delay(2000);
+
+    // Example code fuckery to keep a static consistent address
+    ret = aci_hal_read_config_data(config_data_stored_static_random_address,
+                                   &bdaddr_len_out, bdaddr);
+    if ((bdaddr[5] & 0xC0) != 0xC0) {
+        // Static Random address not well formed
+        while (1);
+    }
+    ret = aci_hal_write_config_data(CONFIG_DATA_PUBADDR_OFFSET,
+                                    bdaddr_len_out,
+                                    bdaddr);
+
+    // Reduce power to -2dBm. Default 8dBm
+    ret = aci_hal_set_tx_power_level(1, 4);
+
+    // GAP and GATT init
+    ret = aci_gatt_init();
+    ret = aci_gap_init(GAP_PERIPHERAL_ROLE, 0x00, 0x07, &service_handle, &dev_name_char_handle,
+                       &appearance_char_handle);
+
+    // Update device name
+    ret = aci_gatt_update_char_value(service_handle, dev_name_char_handle, 0, sizeof(device_name),
+                                     device_name);
+    
+    // Security stuff: Confuses me. leaving sample code as is
+    /*
+     * Clear security database: this implies that each time the application is executed
+     * the full bonding process is executed (with PassKey generation and setting).
+     */
+    ret = aci_gap_clear_security_db();
+
+    /*
+     * Set the I/O capability otherwise the Central device (e.g. the smartphone) will
+     * propose a PIN that will be accepted without any control.
+     */
+    ret = aci_gap_set_io_capability(IO_CAP_DISPLAY_ONLY);
+
+    /* BLE Security v4.2 is supported: BLE stack FW version >= 2.x (new API prototype) */
+    ret = aci_gap_set_authentication_requirement(BONDING,
+                                                 MITM_PROTECTION_REQUIRED,
+                                                 SC_IS_SUPPORTED,
+                                                 KEYPRESS_IS_NOT_SUPPORTED,
+                                                 7,
+                                                 16,
+                                                 DONOT_USE_FIXED_PIN_FOR_PAIRING,
+                                                 PERIPHERAL_PASS_KEY,
+                                                 0x00); /* - 0x00: Public Identity Address
+                                                           - 0x01: Random (static) Identity Address */
+
+    // set up services I guess lol
+    ret = Add_Service();
+
+    // make compiler not say ret is unused...
+    return ret;
+}
+
+static void User_Process(void)
+{
+    /* Make the device discoverable */
+    if (set_connectable)
+    {
+        Set_DeviceConnectable();
+        set_connectable = FALSE;
+    }
+
+    if ((connected) && (!pairing))
+    {
+        aci_gap_slave_security_req(connection_handle);
+        pairing = TRUE;
+    }
+
+    if (paired)
+    {
+        // stuff
+    }
+}
+
+// Puts the device in connectable mode
+void Set_DeviceConnectable(void)
+{
+    uint8_t ret;
+    uint8_t local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,SENSOR_DEMO_NAME};
+
+    uint8_t manuf_data[26] = {
+        2,0x0A,0x00, /* 0 dBm */  // Transmission Power
+        8,0x09,SENSOR_DEMO_NAME,  // Complete Name
+        13,0xFF,0x01, /* SKD version */
+        0x80,
+        0x00,
+        0xF4, /* ACC+Gyro+Mag 0xE0 | 0x04 Temp | 0x10 Pressure */
+        0x00, /*  */
+        0x00, /*  */
+        bdaddr[5], /* BLE MAC start -MSB first- */
+        bdaddr[4],
+        bdaddr[3],
+        bdaddr[2],
+        bdaddr[1],
+        bdaddr[0]  /* BLE MAC stop */
+    };
+
+    manuf_data[18] |= 0x01; /* Sensor Fusion */
+
+    hci_le_set_scan_response_data(0,NULL);
+
+    PRINT_DBG("Set General Discoverable Mode.\r\n");
+
+    ret = aci_gap_set_discoverable(ADV_DATA_TYPE,
+                                   ADV_INTERV_MIN, ADV_INTERV_MAX,
+                                   PUBLIC_ADDR,
+                                   NO_WHITE_LIST_USE,
+                                   sizeof(local_name), local_name, 0, NULL, 0, 0);
+
+    aci_gap_update_adv_data(26, manuf_data);
+
+    if(ret != BLE_STATUS_SUCCESS) {
+        PRINT_DBG("aci_gap_set_discoverable() failed: 0x%02x\r\n", ret);
+    } else {
+        PRINT_DBG("aci_gap_set_discoverable() --> SUCCESS\r\n");
+    }
+}
+
+
+/**
+ * @brief  Callback processing the ACI events
+ * @note   Inside this function each event must be identified and correctly
+ *         parsed
+ *         I'm going to just treat this as boilerplate and not touch it
+ * @param  void* Pointer to the ACI packet
+ */
+void APP_UserEvtRx(void *pData)
+{
+    uint32_t i;
+
+    hci_spi_pckt *hci_pckt = (hci_spi_pckt *)pData;
+
+    if(hci_pckt->type == HCI_EVENT_PKT) {
+        hci_event_pckt *event_pckt = (hci_event_pckt*)hci_pckt->data;
+
+        if(event_pckt->evt == EVT_LE_META_EVENT) {
+            evt_le_meta_event *evt = (void *)event_pckt->data;
+
+            for (i = 0; i < (sizeof(hci_le_meta_events_table)/sizeof(hci_le_meta_events_table_type)); i++) {
+                if (evt->subevent == hci_le_meta_events_table[i].evt_code) {
+                    hci_le_meta_events_table[i].process((void *)evt->data);
+                }
+            }
+        } else if(event_pckt->evt == EVT_VENDOR) {
+            evt_blue_aci *blue_evt = (void*)event_pckt->data;
+
+            for (i = 0; i < (sizeof(hci_vendor_specific_events_table)/sizeof(hci_vendor_specific_events_table_type)); i++) {
+                if (blue_evt->ecode == hci_vendor_specific_events_table[i].evt_code) {
+                    hci_vendor_specific_events_table[i].process((void *)blue_evt->data);
+                }
+            }
+        } else {
+            for (i = 0; i < (sizeof(hci_events_table)/sizeof(hci_events_table_type)); i++) {
+                if (event_pckt->evt == hci_events_table[i].evt_code) {
+                    hci_events_table[i].process((void *)event_pckt->data);
+                }
+            }
+        }
+    }
+}
+
+tBleStatus Add_Service() {
+    tBleStatus ret;
+    uint8_t uuid[16];
+
+    uint8_t char_number = 1;
+    uint8_t max_attribute_records = 1+(3*char_number); // service + chars*(declaration + value + descriptor)
+
+    // https://www.uuidgenerator.net/
+    // randomly generated uuids
+
+    // add service
+    COPY_UUID_128(uuid,0xbc,0x15,0x92,0x6b,0xd4,0x35,0x48,0x13,0xb2,0x32,0xc5,0x68,0x30,0x30,0x2c,0x2d);
+    BLUENRG_memcpy(&service_uuid.Service_UUID_128, uuid, 16);
+    ret = aci_gatt_add_service(UUID_TYPE_128, &service_uuid, PRIMARY_SERVICE,
+                               max_attribute_records, &service_hndl);
+                                
+    if (ret != BLE_STATUS_SUCCESS) {
+        return ret;
+    }
+
+    // add characteristic
+    COPY_UUID_128(uuid,0x45,0x44,0x7e,0xb2,0x7b,0xf6,0x48,0xf1,0xa4,0xff,0x08,0xe1,0x4c,0x92,0x22,0x4c);
+    BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
+    ret =  aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
+                             8, // 2 floats
+                             CHAR_PROP_WRITE|CHAR_PROP_READ,
+                             ATTR_PERMISSION_NONE,
+                             GATT_NOTIFY_ATTRIBUTE_WRITE,
+                             16, 0, &characteristic_hndl);
+
+    return ret;
+}
+
+/* ***************** BlueNRG-1 Stack Callbacks ********************************/
+// new connection has been created
+void hci_le_connection_complete_event(uint8_t Status,
+                                      uint16_t Connection_Handle,
+                                      uint8_t Role,
+                                      uint8_t Peer_Address_Type,
+                                      uint8_t Peer_Address[6],
+                                      uint16_t Conn_Interval,
+                                      uint16_t Conn_Latency,
+                                      uint16_t Supervision_Timeout,
+                                      uint8_t Master_Clock_Accuracy)
+{
+    connected = TRUE;
+    pairing = TRUE;
+    paired = TRUE;
+
+    connection_handle = Connection_Handle;
+}
+
+// connection is terminated
+void hci_disconnection_complete_event(uint8_t Status,
+                                      uint16_t Connection_Handle,
+                                      uint8_t Reason)
+{
+    connected = FALSE;
+    pairing = FALSE;
+    paired = FALSE;
+
+    /* Make the device connectable again */
+    set_connectable = TRUE;
+    connection_handle = 0;
+}
+
+// attribute changes its value
+void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
+                                       uint16_t Attribute_Handle,
+                                       uint16_t Offset,
+                                       uint16_t Attr_Data_Length,
+                                       uint8_t Attr_Data[])
+{
+  // if(attr_handle == characteristic_hndl + 2) {
+  //   if (att_data[0] == 1) {
+  //     send_env = TRUE;
+  //   } else if (att_data[0] == 0){
+  //     send_env = FALSE;
+  //   }
+  // }
+}
+
+/**
+ * This event is generated by the Security manager to the application
+ * when a passkey is required for pairing.
+ * When this event is received, the application has to respond with the
+ * aci_gap_pass_key_resp command.
+ */
+void aci_gap_pass_key_req_event(uint16_t Connection_Handle) {
+    aci_gap_pass_key_resp(connection_handle, PERIPHERAL_PASS_KEY);
+}
+
+/**
+ * This event is generated when the pairing process has completed successfully or a pairing
+ * procedure timeout has occurred or the pairing has failed. This is to notify the application that
+ * we have paired with a remote device so that it can take further actions or to notify that a
+ * timeout has occurred so that the upper layer can decide to disconnect the link.
+ */
+void aci_gap_pairing_complete_event(uint16_t connection_handle, uint8_t status, uint8_t reason) {
+    if (status != 0x02) {
+        paired = TRUE;
+    }
+}

@@ -6,6 +6,6 @@ if [[ ":$PATH:" != *":$dir:"* ]]; then
     export PATH="$dir:$PATH"
 fi
 
-make all || exit 1
+make -j16 all || exit 1
 cd ..
 openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program Debug/nullkart.elf verify reset exit"

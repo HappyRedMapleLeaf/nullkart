@@ -10,6 +10,8 @@
 
 #include "dcmotor_drv.h"
 
+#include "app_bluenrg_2.h"
+
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim5;
@@ -41,12 +43,15 @@ void user_init() {
     HAL_TIM_Base_Start(&htim5);
     DCMotor_Start(&left_wheel);
     DCMotor_Start(&right_wheel);
+    MX_BlueNRG_2_Init();
 }
 
 float power = 0.0;
 bool up = false;
 
-void user_loop() {    
+void user_loop() {
+    MX_BlueNRG_2_Process();
+
     // if (power < 0.0) {
     //     power = 0.0;
     //     up = true;
@@ -61,12 +66,8 @@ void user_loop() {
     // }
     // DCMotor_SetPower(&left_wheel, power);
     // DCMotor_SetPower(&right_wheel, power);
-    DCMotor_SetPower(&left_wheel, 0.1);
-    DCMotor_SetPower(&right_wheel, 0.1);
-
-    HAL_Delay(10); // crucially important
-    // if the loop is too fast some weird race condition thing happens and the uart transmission messes up
-    // will investigate further later (maybe)
+    // DCMotor_SetPower(&left_wheel, 0.1);
+    // DCMotor_SetPower(&right_wheel, 0.1);
 }
 
 // currently every 10ms

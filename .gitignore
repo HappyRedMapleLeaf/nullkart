@@ -2,3 +2,6 @@
 /.vscode
 /Drivers
 /Debug
+/BlueNRG-2
+/Middlewares
+**/*stm32f4xx*

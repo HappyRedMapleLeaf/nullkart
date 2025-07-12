@@ -169,11 +169,11 @@ Vec3 vec3_rot_by_vec4(Vec3 v, Vec4 q) {
 double tilt_angle(Vec4 q) {
     // Neutral axes
     Vec3 z_neutral = {0.0, 0.0, -1.0};  // gravity down
-    Vec3 x_neutral = {1.0, 0.0, 0.0};   // axis of rotation
+    // Vec3 x_neutral = {1.0, 0.0, 0.0};   // axis of rotation
 
     // Rotate z_neutral and x_neutral
     Vec3 z_current = vec3_rot_by_vec4(z_neutral, q);
-    Vec3 x_current = vec3_rot_by_vec4(x_neutral, q);
+    // Vec3 x_current = vec3_rot_by_vec4(x_neutral, q);
 
     // Extract y and z components of the rotated z vector (project onto YZ plane)
     double y = z_current.y;

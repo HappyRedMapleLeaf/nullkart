@@ -1,12 +1,10 @@
 overall:
-figure out why imu whoami breaks
 give defaults to struct values that should be internal (separate config and instance?)
 add init functions
 
 host:
 
 mcu:
-
 
 general code:
 fix naming

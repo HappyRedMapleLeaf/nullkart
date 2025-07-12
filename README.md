@@ -20,6 +20,7 @@ Ground: everywhere
 UART: PA2, PA3
 
 BLE:
+FOR NOW USING PB3 INSTEAD OF PA5
 PA0 BOOT
 PA1 SPI_CS
 PA5 SPI_CLK (short pins 1-2 of P14)
