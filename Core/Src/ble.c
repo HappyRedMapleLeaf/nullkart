@@ -1,4 +1,8 @@
-#include "app_bluenrg_2.h"
+/**
+ * Most of this is modified example code from ST.
+ */
+
+#include "ble.h"
 
 #include <stdlib.h>
 
@@ -14,16 +18,6 @@
 /* Private macros ------------------------------------------------------------*/
 #define SENSOR_DEMO_NAME   'B','a','n','a','n','a','s'
 #define BDADDR_SIZE        6
-
-/** @brief Macro that stores Value into a buffer in Little Endian Format (2 bytes)*/
-#define HOST_TO_LE_16(buf, val)    ( ((buf)[0] =  (uint8_t) (val)    ) , \
-                                   ((buf)[1] =  (uint8_t) (val>>8) ) )
-
-/** @brief Macro that stores Value into a buffer in Little Endian Format (4 bytes) */
-#define HOST_TO_LE_32(buf, val)    ( ((buf)[0] =  (uint8_t) (val)     ) , \
-                                   ((buf)[1] =  (uint8_t) (val>>8)  ) , \
-                                   ((buf)[2] =  (uint8_t) (val>>16) ) , \
-                                   ((buf)[3] =  (uint8_t) (val>>24) ) )
 
 #define COPY_UUID_128(uuid_struct, uuid_15, uuid_14, uuid_13, uuid_12, uuid_11, uuid_10, uuid_9, uuid_8, uuid_7, uuid_6, uuid_5, uuid_4, uuid_3, uuid_2, uuid_1, uuid_0) \
 do {\
@@ -46,33 +40,30 @@ Service_UUID_t service_uuid;
 Char_UUID_t char_uuid;
 
 /* Private function prototypes -----------------------------------------------*/
-static void User_Process(void);
 static uint8_t DeviceInit(void);
 void Set_DeviceConnectable(void);
 void APP_UserEvtRx(void *pData);
 tBleStatus Add_Service();
-void Attribute_Modified_Request_CB(uint16_t Connection_Handle, uint16_t attr_handle,
-                                   uint16_t Offset, uint8_t data_length, uint8_t *att_data);
 
 void MX_BlueNRG_2_Init(void) {
-    /* Initialize the peripherals and the BLE Stack */
-    uint8_t ret;
-
     hci_init(APP_UserEvtRx, NULL);
-
-    /* Init Sensor Device */
-    ret = DeviceInit();
-    if (ret != BLE_STATUS_SUCCESS) {
-        while (1);
-    }
 }
 
-/*
- * BlueNRG-2 background task
- */
 void MX_BlueNRG_2_Process(void) {
     hci_user_evt_proc();
-    User_Process();
+    
+    /* Make the device discoverable */
+    if (set_connectable)
+    {
+        Set_DeviceConnectable();
+        set_connectable = FALSE;
+    }
+
+    if ((connected) && (!pairing))
+    {
+        aci_gap_slave_security_req(connection_handle);
+        pairing = TRUE;
+    }
 }
 
 uint8_t DeviceInit(void) {
@@ -99,8 +90,20 @@ uint8_t DeviceInit(void) {
                                     bdaddr_len_out,
                                     bdaddr);
 
-    // Reduce power to -2dBm. Default 8dBm
-    ret = aci_hal_set_tx_power_level(1, 4);
+    /**
+     * https://community.st.com/t5/interface-and-connectivity-ics/transmit-power-for-aci-hal-set-tx-power-level-for-bluenrg-2/td-p/210968
+     * Please always set En_High_Power to 1.
+     * And the below table for PA_Level,
+     * 0: -14 dBm (High Power)
+     * 1: -11 dBm (High Power)
+     * 2: -8 dBm (High Power)
+     * 3: -5 dBm (High Power)
+     * 4: -2 dBm (High Power)
+     * 5: 2 dBm (High Power)
+     * 6: 4 dBm (High Power)
+     * 7: 8 dBm (High Power) (default on reset)
+     */
+    ret = aci_hal_set_tx_power_level(1, 7);
 
     // GAP and GATT init
     ret = aci_gatt_init();
@@ -141,27 +144,6 @@ uint8_t DeviceInit(void) {
 
     // make compiler not say ret is unused...
     return ret;
-}
-
-static void User_Process(void)
-{
-    /* Make the device discoverable */
-    if (set_connectable)
-    {
-        Set_DeviceConnectable();
-        set_connectable = FALSE;
-    }
-
-    if ((connected) && (!pairing))
-    {
-        aci_gap_slave_security_req(connection_handle);
-        pairing = TRUE;
-    }
-
-    if (paired)
-    {
-        // stuff
-    }
 }
 
 // Puts the device in connectable mode
@@ -315,22 +297,6 @@ void hci_disconnection_complete_event(uint8_t Status,
     /* Make the device connectable again */
     set_connectable = TRUE;
     connection_handle = 0;
-}
-
-// attribute changes its value
-void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
-                                       uint16_t Attribute_Handle,
-                                       uint16_t Offset,
-                                       uint16_t Attr_Data_Length,
-                                       uint8_t Attr_Data[])
-{
-  // if(attr_handle == characteristic_hndl + 2) {
-  //   if (att_data[0] == 1) {
-  //     send_env = TRUE;
-  //   } else if (att_data[0] == 0){
-  //     send_env = FALSE;
-  //   }
-  // }
 }
 
 /**

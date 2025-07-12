@@ -18,6 +18,11 @@ extern TIM_HandleTypeDef htim5;
 extern UART_HandleTypeDef huart2;
 extern I2C_HandleTypeDef hi2c3;
 
+float left_power = 0.0;
+float right_power = 0.0;
+
+extern uint16_t service_hndl, characteristic_hndl;
+
 // L PWM PB4 3/1; DIR PB5, PA10; ENC PC2, PC3
 // R PWM PC7 3/2; DIR PC0, PA9; ENC PH0, PH1
 
@@ -68,6 +73,25 @@ void user_loop() {
     // DCMotor_SetPower(&right_wheel, power);
     // DCMotor_SetPower(&left_wheel, 0.1);
     // DCMotor_SetPower(&right_wheel, 0.1);
+}
+
+// attribute changes its value
+void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
+                                       uint16_t Attribute_Handle,
+                                       uint16_t Offset,
+                                       uint16_t Attr_Data_Length,
+                                       uint8_t Attr_Data[]) {
+    if (Attribute_Handle == characteristic_hndl + 1) {
+        // received data from client
+        if (Attr_Data_Length >= 8) {  // 8 bytes = 2 floats × 4 bytes each            
+            // Copy bytes to float variables (handles alignment issues)
+            memcpy(&left_power, &Attr_Data[0], sizeof(float));   // First 4 bytes
+            memcpy(&right_power, &Attr_Data[4], sizeof(float));  // Next 4 bytes
+
+            DCMotor_SetPower(&left_wheel, left_power);
+            DCMotor_SetPower(&right_wheel, right_power);
+        }
+    }
 }
 
 // currently every 10ms

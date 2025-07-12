@@ -1,5 +1,6 @@
 /.settings
 /.vscode
+/.venv
 /Drivers
 /Debug
 /BlueNRG-2
