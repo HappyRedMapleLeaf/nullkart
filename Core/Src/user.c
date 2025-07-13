@@ -1,6 +1,5 @@
 #include "user.h"
 #include "main.h"
-#include "common.h"
 #include <stdbool.h>
 #include <math.h>
 
@@ -63,8 +62,38 @@ void user_init() {
     MX_BlueNRG_2_Init();
 }
 
+// quick utility function
+// checks whether delay has passed since prevTimer
+// if so, prevTimer is reset
+// to be replaced with some sort of timer module
+bool compareTimer(uint32_t * prevTimer, uint32_t delay) {
+    bool delayReached = TIM5->CNT - *prevTimer > delay;
+    if (delayReached) {
+        *prevTimer = TIM5->CNT;
+    }
+    return delayReached;
+}
+
+uint8_t send_values[16];
+uint32_t prev_updatechar_ticks = 0;
+
 void user_loop() {
     MX_BlueNRG_2_Process();
+
+    // 500ms loop
+    if (compareTimer(&prev_updatechar_ticks, 64000*500)) {
+        // update values in BLE characteristic (ie transmit data)
+        if (paired) {
+            // copy volatile values
+            uint64_t left_ticks = left_wheel.ticks;
+            uint64_t right_ticks = right_wheel.ticks;
+            memcpy(&(send_values[0]), &(left_ticks),  sizeof(uint64_t));
+            memcpy(&(send_values[8]), &(right_ticks), sizeof(uint64_t));
+
+            aci_gatt_update_char_value(service_hndl, txchar_hndl, 0,
+                                       16, send_values);
+        }
+    }
 }
 
 // handle when attribute changes its value (ie. we receive data)
@@ -90,19 +119,6 @@ void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim) {
 	DCMotor_TIMCallback(&left_wheel, htim, 0.01F);
 	DCMotor_TIMCallback(&right_wheel, htim, 0.01F);
-
-    // update values in BLE characteristic (ie transmit data)
-    if (htim == &htim2 && paired) {
-        uint8_t values[16];
-        // copy volatile values
-        uint64_t left_ticks = left_wheel.ticks;
-        uint64_t right_ticks = right_wheel.ticks;
-        memcpy(&(values[0]),    &(left_ticks),  sizeof(uint64_t));
-        memcpy(&(values[8]), &(right_ticks), sizeof(uint64_t));
-
-        aci_gatt_update_char_value(service_hndl, txchar_hndl, 0,
-                                16, values);
-    }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
