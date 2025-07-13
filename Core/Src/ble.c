@@ -260,7 +260,7 @@ tBleStatus Add_Service() {
     BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
     ret = aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
                             8, // 2 floats
-                            CHAR_PROP_WRITE,
+                            CHAR_PROP_READ|CHAR_PROP_WRITE,
                             ATTR_PERMISSION_NONE,
                             GATT_NOTIFY_ATTRIBUTE_WRITE,
                             16, 0, &rxchar_hndl); 
@@ -275,7 +275,7 @@ tBleStatus Add_Service() {
     BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
     ret = aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
                             16, // 4 floats, x, y, heading, spare
-                            CHAR_PROP_READ,
+                            CHAR_PROP_READ|CHAR_PROP_WRITE,
                             ATTR_PERMISSION_NONE,
                             GATT_DONT_NOTIFY_EVENTS,
                             16, 0, &txchar_hndl);
