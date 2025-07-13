@@ -18,12 +18,10 @@ extern TIM_HandleTypeDef htim5;
 extern UART_HandleTypeDef huart2;
 extern I2C_HandleTypeDef hi2c3;
 
-extern uint16_t service_hndl, characteristic_hndl;
+extern uint16_t service_hndl, txchar_hndl, rxchar_hndl;
 
 float left_power = 0.0;
 float right_power = 0.0;
-
-extern uint16_t service_hndl, characteristic_hndl;
 
 extern bool paired;
 
@@ -69,13 +67,13 @@ void user_loop() {
     MX_BlueNRG_2_Process();
 }
 
-// attribute changes its value
+// handle when attribute changes its value (ie. we receive data)
 void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
                                        uint16_t Attribute_Handle,
                                        uint16_t Offset,
                                        uint16_t Attr_Data_Length,
                                        uint8_t Attr_Data[]) {
-    if (Attribute_Handle == characteristic_hndl + 1) {
+    if (Attribute_Handle == rxchar_hndl + 1) {
         // received data from client
         if (Attr_Data_Length >= 8) {  // 8 bytes = 2 floats × 4 bytes each            
             // Copy bytes to float variables (handles alignment issues)
@@ -93,7 +91,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim) {
 	DCMotor_TIMCallback(&left_wheel, htim, 0.01F);
 	DCMotor_TIMCallback(&right_wheel, htim, 0.01F);
 
-    // update values in BLE characteristic
+    // update values in BLE characteristic (ie transmit data)
     if (htim == &htim2 && paired) {
         uint8_t values[16];
         // copy volatile values
@@ -102,7 +100,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim) {
         memcpy(&(values[0]),    &(left_ticks),  sizeof(uint64_t));
         memcpy(&(values[8]), &(right_ticks), sizeof(uint64_t));
 
-        aci_gatt_update_char_value(service_hndl, characteristic_hndl, 0,
+        aci_gatt_update_char_value(service_hndl, txchar_hndl, 0,
                                 16, values);
     }
 }

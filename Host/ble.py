@@ -99,7 +99,7 @@ async def run_cli(client, WRITE_UUID, READ_UUID):
                     print(f"Read values: {uint1}, {uint2}")
                 
             except Exception as e:
-                print(f"Error writing to characteristic: {e}")
+                print(f"Error: {e}")
                 break
             except KeyboardInterrupt:
                 print("\nExiting CLI...")

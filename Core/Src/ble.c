@@ -34,7 +34,7 @@ volatile uint8_t  pairing = FALSE;
 volatile uint8_t  paired = FALSE;
 uint8_t bdaddr[BDADDR_SIZE];
 
-uint16_t service_hndl, characteristic_hndl;
+uint16_t service_hndl, txchar_hndl, rxchar_hndl;
 Service_UUID_t service_uuid;
 Char_UUID_t char_uuid;
 
@@ -237,7 +237,7 @@ tBleStatus Add_Service() {
     tBleStatus ret;
     uint8_t uuid[16];
 
-    uint8_t char_number = 1;
+    uint8_t char_number = 2;
     uint8_t max_attribute_records = 1+(3*char_number); // service + chars*(declaration + value + descriptor)
 
     // https://www.uuidgenerator.net/
@@ -258,25 +258,27 @@ tBleStatus Add_Service() {
     // 45d47eb2-7bf6-48f1-a4ff-08e14c92224c
     COPY_UUID_128(uuid,0x45,0x44,0x7e,0xb2,0x7b,0xf6,0x48,0xf1,0xa4,0xff,0x08,0xe1,0x4c,0x92,0x22,0x4c);
     BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
-    ret =  aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
-                             8, // 2 floats
-                             CHAR_PROP_WRITE|CHAR_PROP_READ,
-                             ATTR_PERMISSION_NONE,
-                             GATT_NOTIFY_ATTRIBUTE_WRITE,
-                             16, 0, &characteristic_hndl);
-
-    return ret;
+    ret = aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
+                            8, // 2 floats
+                            CHAR_PROP_WRITE,
+                            ATTR_PERMISSION_NONE,
+                            GATT_NOTIFY_ATTRIBUTE_WRITE,
+                            16, 0, &rxchar_hndl); 
+    
+    if (ret != BLE_STATUS_SUCCESS) {
+        return ret;
+    }
 
     // add characteristic for retrieving localization data
     // 6e18d67b-5fd7-4571-828e-fa04a317f5e3
     COPY_UUID_128(uuid,0x6e,0x18,0xd6,0x7b,0x5f,0xd7,0x45,0x71,0x82,0x8e,0xfa,0x04,0xa3,0x17,0xf5,0xe3);
     BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
-    ret =  aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
-                             16, // 4 floats, x, y, heading, spare
-                             CHAR_PROP_WRITE|CHAR_PROP_READ,
-                             ATTR_PERMISSION_NONE,
-                             GATT_NOTIFY_ATTRIBUTE_WRITE,
-                             16, 0, &characteristic_hndl);
+    ret = aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
+                            16, // 4 floats, x, y, heading, spare
+                            CHAR_PROP_READ,
+                            ATTR_PERMISSION_NONE,
+                            GATT_DONT_NOTIFY_EVENTS,
+                            16, 0, &txchar_hndl);
 
     return ret;
 }
