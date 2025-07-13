@@ -17,23 +17,22 @@ typedef struct {
     uint16_t rev_GPIO_pin;
 
     // data used for encoder
-    GPIO_TypeDef * ENC1_A_GPIO_Port;
-    uint16_t ENC1_A_Pin;
-    GPIO_TypeDef * ENC1_B_GPIO_Port;
-    uint16_t ENC1_B_Pin;
+    GPIO_TypeDef * enc_a_GPIO_port;
+    uint16_t enc_a_GPIO_pin;
+    GPIO_TypeDef * enc_b_GPIO_port;
+    uint16_t enc_b_GPIO_pin;
     TIM_HandleTypeDef *htim_enc;
 
-    // TODO: init to 0
+    // set to 0 in init
     volatile float rateAvgBuffer[RATE_AVG_BUF_SIZE];
     volatile uint16_t rateAvgIdx;
     volatile float rateAvgSum;
     volatile float rate_filtered;
-
-    int64_t ticks;
-    int64_t prev_ticks;
+    volatile int64_t ticks;
+    volatile int64_t prev_ticks;
 } DCMotor;
 
-void DCMotor_Start(DCMotor *motor);
+void DCMotor_Init(DCMotor *motor);
 
 void DCMotor_TIMCallback(DCMotor *motor, TIM_HandleTypeDef *htim, float dt_s);
 

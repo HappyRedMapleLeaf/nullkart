@@ -55,37 +55,48 @@ async def connect_to_device(device_address):
         print(f"Failed to connect to {device_address}: {e}")
         return None
 
-async def run_cli(client, CHARACTERISTIC_UUID):
-    """CLI for entering two floats and writing to characteristic"""
-    print(f"\nCLI Interface - Writing to characteristic {CHARACTERISTIC_UUID}")
-    print("Enter two floats (or 'quit' to exit)")
-    
+async def run_cli(client, WRITE_UUID, READ_UUID):
+    """CLI for entering two floats and writing to characteristic"""    
     try:
         while client.is_connected:
             try:
-                user_input = input("\nEnter command (or 'q'): ").strip()
-                if user_input.lower() == 'q':
+                user_input = input("\nEnter command (or 'q'): ").strip().lower().split()
+                if user_input[0] == 'q':
                     break
-                
-                # Parse two floats
-                parts = user_input.split()
-                if len(parts) != 2:
-                    print("Please enter exactly two floats (e.g., '1.5 2.7')")
-                    continue
-                
-                try:
-                    float1 = float(parts[0])
-                    float2 = float(parts[1])
-                except ValueError:
-                    print("Invalid float values. Please enter valid numbers.")
-                    continue
-                
-                # Pack floats as bytes (little-endian format)
-                data = struct.pack('<ff', float1, float2)
-                
-                print(f"Writing floats {float1}, {float2} to characteristic...")
-                await client.write_gatt_char(CHARACTERISTIC_UUID, data)
-                print("Write successful!")
+                elif user_input[0] == 'h':
+                    print("Available commands:")
+                    print("  h: Show this help")
+                    print("  q: Quit the CLI")
+                    print("  w <float1> <float2>: Write two floats to characteristic")
+                    print("  r: Read values")
+                elif user_input[0] == 'w':
+                    if len(user_input) != 3:
+                        print("Wrong number of arguments.")
+                        continue
+                    
+                    try:
+                        float1 = float(user_input[1])
+                        float2 = float(user_input[2])
+                    except ValueError:
+                        print("Arguments could not be converted to floats.")
+                        continue
+                    
+                    # Pack floats as bytes (little-endian format)
+                    data = struct.pack('<ff', float1, float2)
+                    
+                    print(f"Writing floats {float1}, {float2}")
+                    await client.write_gatt_char(WRITE_UUID, data)
+                    print("Success")
+                elif user_input[0] == 'r':
+                    data = await client.read_gatt_char(READ_UUID)
+                    
+                    if len(data) != 16:
+                        print("Unexpected data length received.")
+                        continue
+                    
+                    # Unpack uint64's from bytes (little-endian format)
+                    uint1, uint2 = struct.unpack('<QQ', data)
+                    print(f"Read values: {uint1}, {uint2}")
                 
             except Exception as e:
                 print(f"Error writing to characteristic: {e}")
@@ -102,7 +113,8 @@ async def run_cli(client, CHARACTERISTIC_UUID):
 async def main():
     """Main function that orchestrates scan, connect, and CLI"""
     TARGET_DEVICE = "DC:47:10:B2:48:C4"
-    CHARACTERISTIC_UUID = "45447eb2-7bf6-48f1-a4ff-08e14c92224c"
+    WRITE_UUID = "45447eb2-7bf6-48f1-a4ff-08e14c92224c"
+    READ_UUID = "6e18d67b-5fd7-4571-828e-fa04a317f5e3"
     
     # Step 1: Scan for devices
     ret = await scan_target_device(TARGET_DEVICE, 5.0)
@@ -118,7 +130,7 @@ async def main():
         return
     
     # Step 3: Run CLI
-    await run_cli(client, CHARACTERISTIC_UUID)
+    await run_cli(client, WRITE_UUID, READ_UUID)
 
 if __name__ == "__main__":
     asyncio.run(main())

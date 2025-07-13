@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 
-#include "bluenrg1_aci.h"
 #include "bluenrg1_hci_le.h"
 #include "bluenrg1_events.h"
 #include "hci_tl.h"
@@ -47,6 +46,7 @@ tBleStatus Add_Service();
 
 void MX_BlueNRG_2_Init(void) {
     hci_init(APP_UserEvtRx, NULL);
+    DeviceInit();
 }
 
 void MX_BlueNRG_2_Process(void) {
@@ -79,7 +79,7 @@ uint8_t DeviceInit(void) {
     // 2s delay required by ST
     HAL_Delay(2000);
 
-    // Example code fuckery to keep a static consistent address
+    // Example code stuff to keep a static consistent address
     ret = aci_hal_read_config_data(config_data_stored_static_random_address,
                                    &bdaddr_len_out, bdaddr);
     if ((bdaddr[5] & 0xC0) != 0xC0) {
@@ -244,6 +244,7 @@ tBleStatus Add_Service() {
     // randomly generated uuids
 
     // add service
+    // bc15926b-d435-4813-b232-c56830302c2d
     COPY_UUID_128(uuid,0xbc,0x15,0x92,0x6b,0xd4,0x35,0x48,0x13,0xb2,0x32,0xc5,0x68,0x30,0x30,0x2c,0x2d);
     BLUENRG_memcpy(&service_uuid.Service_UUID_128, uuid, 16);
     ret = aci_gatt_add_service(UUID_TYPE_128, &service_uuid, PRIMARY_SERVICE,
@@ -253,11 +254,25 @@ tBleStatus Add_Service() {
         return ret;
     }
 
-    // add characteristic
+    // add characteristic for setting motor velos
+    // 45d47eb2-7bf6-48f1-a4ff-08e14c92224c
     COPY_UUID_128(uuid,0x45,0x44,0x7e,0xb2,0x7b,0xf6,0x48,0xf1,0xa4,0xff,0x08,0xe1,0x4c,0x92,0x22,0x4c);
     BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
     ret =  aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
                              8, // 2 floats
+                             CHAR_PROP_WRITE|CHAR_PROP_READ,
+                             ATTR_PERMISSION_NONE,
+                             GATT_NOTIFY_ATTRIBUTE_WRITE,
+                             16, 0, &characteristic_hndl);
+
+    return ret;
+
+    // add characteristic for retrieving localization data
+    // 6e18d67b-5fd7-4571-828e-fa04a317f5e3
+    COPY_UUID_128(uuid,0x6e,0x18,0xd6,0x7b,0x5f,0xd7,0x45,0x71,0x82,0x8e,0xfa,0x04,0xa3,0x17,0xf5,0xe3);
+    BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
+    ret =  aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
+                             16, // 4 floats, x, y, heading, spare
                              CHAR_PROP_WRITE|CHAR_PROP_READ,
                              ATTR_PERMISSION_NONE,
                              GATT_NOTIFY_ATTRIBUTE_WRITE,

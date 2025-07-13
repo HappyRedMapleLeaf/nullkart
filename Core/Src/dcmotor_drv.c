@@ -2,13 +2,26 @@
 
 #include <math.h>
 
-void DCMotor_Start(DCMotor *motor) {
-    // HAL_TIM_Base_Start_IT(motor->htim_enc);
+void DCMotor_Init(DCMotor *motor) {
+    // Initialize encoder values
+    motor->rateAvgIdx = 0;
+    motor->rateAvgSum = 0.0f;
+    motor->rate_filtered = 0.0f;
+    motor->ticks = 0;
+    motor->prev_ticks = 0;
+
+    // Initialize rate average buffer
+    for (int i = 0; i < RATE_AVG_BUF_SIZE; i++) {
+        motor->rateAvgBuffer[i] = 0.0f;
+    }
+
+    // Start the encoder timer
+    HAL_TIM_Base_Start_IT(motor->htim_enc);
     HAL_TIM_PWM_Start(motor->htim_pwm, motor->pwm_channel);
 }
 
 void DCMotor_TIMCallback(DCMotor *motor, TIM_HandleTypeDef *htim, float dt_s) {
-    if (htim == motor->htim_pwm) {
+    if (htim == motor->htim_enc) {
         // calculate raw derivative of ticks
         float rate = (motor->ticks - motor->prev_ticks) / dt_s;
         motor->prev_ticks = motor->ticks;
@@ -23,8 +36,8 @@ void DCMotor_TIMCallback(DCMotor *motor, TIM_HandleTypeDef *htim, float dt_s) {
 }
 
 void DCMotor_GPIOCallback(DCMotor *motor, uint16_t GPIO_Pin) {
-    if (GPIO_Pin == motor->ENC1_A_Pin) {
-        if (HAL_GPIO_ReadPin(motor->ENC1_A_GPIO_Port, motor->ENC1_A_Pin) == HAL_GPIO_ReadPin(motor->ENC1_B_GPIO_Port, motor->ENC1_B_Pin)) {
+    if (GPIO_Pin == motor->enc_a_GPIO_pin) {
+        if (HAL_GPIO_ReadPin(motor->enc_a_GPIO_port, motor->enc_a_GPIO_pin) == HAL_GPIO_ReadPin(motor->enc_b_GPIO_port, motor->enc_b_GPIO_pin)) {
             // going backwards if falling edge on channel B low
             // or rising edge on channel B high
             motor->ticks--;
@@ -33,8 +46,8 @@ void DCMotor_GPIOCallback(DCMotor *motor, uint16_t GPIO_Pin) {
             // or falling edge on channel B high
             motor->ticks++;
         }
-    } else if (GPIO_Pin == motor->ENC1_B_Pin) {
-        if (HAL_GPIO_ReadPin(motor->ENC1_A_GPIO_Port, motor->ENC1_A_Pin) == HAL_GPIO_ReadPin(motor->ENC1_B_GPIO_Port, motor->ENC1_B_Pin)) {
+    } else if (GPIO_Pin == motor->enc_b_GPIO_pin) {
+        if (HAL_GPIO_ReadPin(motor->enc_a_GPIO_port, motor->enc_a_GPIO_pin) == HAL_GPIO_ReadPin(motor->enc_b_GPIO_port, motor->enc_b_GPIO_pin)) {
             // going forwards if rising edge on channel A low
             // or falling edge on channel A high
             motor->ticks++;

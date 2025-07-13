@@ -20,14 +20,18 @@ Ground: everywhere
 UART: PA2, PA3
 
 BLE:
-FOR NOW USING PB3 INSTEAD OF PA5
 PA0 BOOT
 PA1 SPI_CS
-PA5 SPI_CLK (short pins 1-2 of P14)
+PB3 SPI_CLK (short pins 2-3 of P14)
 PA6 SPI_MISO
 PA7 SPI_MOSI
-PB6 SPI_CS for EEPROM
 PA8 RESET
+
+Free: PB6, PB3, PB10, PA4, PB0, PC1
+
+RCC OSC: PH0, PH1, PC14, PC15
+B1: PC13
+LD2: PA5
 
 I2C: PB8, PB9
 
@@ -43,13 +47,7 @@ R PC0, PA9
 
 Encoder GPIOs (input):
 L PC2, PC3
-R PH0, PH1
-
-Servo PWMs (output):
-PB3 2/2
-PB10 2/3
-
-ADCs: PA4 PB0 PC1 (channels 4, 8, 11)
+R PA15, PB7
 
 # CONVENTIONS
 CCW is +
