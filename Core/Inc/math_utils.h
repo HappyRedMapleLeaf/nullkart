@@ -12,6 +12,11 @@
 #define AXIS_Z 2
 
 typedef struct {
+   float x;
+   float y;
+} Vec2;
+
+typedef struct {
    double x;
    double y;
    double z;

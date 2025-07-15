@@ -4,6 +4,7 @@ add init functions
 fix naming
 comment
 
+make math utils less repetitive and use "templates" for type?? (vec2, vec3, vec4)
 
 localization telemetry
 
