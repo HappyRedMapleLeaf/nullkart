@@ -4,6 +4,7 @@ from bleak import BleakScanner, BleakClient
 
 READ_MODE_2_UINT64 = 0
 READ_MODE_2_FLOAT = 1
+READ_MODE_3_FLOAT = 2
 read_mode = READ_MODE_2_FLOAT
 
 async def scan_target_device(target_device, scan_timeout):
@@ -97,15 +98,16 @@ async def run_cli(client, WRITE_UUID, READ_UUID):
                     if len(data) != 16:
                         print("Unexpected data length received.")
                         continue
-                    
-                    if read_mode == READ_MODE_2_FLOAT:
-                        # Unpack floats from bytes (little-endian format)
-                        float1, float2, _, _ = struct.unpack('<ffff', data)
-                        print(f"Read values: {float1}, {float2}")
-                    elif read_mode == READ_MODE_2_UINT64:
-                        # Unpack uint64's from bytes (little-endian format)
+
+                    if read_mode == READ_MODE_2_UINT64:
                         uint1, uint2 = struct.unpack('<QQ', data)
                         print(f"Read values: {uint1}, {uint2}")
+                    elif read_mode == READ_MODE_2_FLOAT:
+                        float1, float2, _, _ = struct.unpack('<ffff', data)
+                        print(f"Read values: {float1}, {float2}")
+                    elif read_mode == READ_MODE_3_FLOAT:
+                        float1, float2, float3, _ = struct.unpack('<ffff', data)
+                        print(f"Read values: {float1}, {float2}, {float3}")
                 
             except Exception as e:
                 print(f"Error: {e}")

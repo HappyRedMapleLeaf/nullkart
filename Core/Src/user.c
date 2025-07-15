@@ -1,28 +1,36 @@
 #include "user.h"
-#include "main.h"
+
+/* STANDARD INCLUDES */
 #include <stdbool.h>
 #include <math.h>
 
-#include "math_utils.h"
-#include "imu_drv.h"
-#include "pid.h"
-
-#include "dcmotor_drv.h"
-
+/* USER INCLUDES */
 #include "ble.h"
+#include "dcmotor_drv.h"
+#include "imu_drv.h"
+#include "main.h"
+#include "math_utils.h"
+#include "pid.h"
+#include "two_wheel_tracker.h"
 
+/* EXTERN VARIABLES */
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim5;
 extern UART_HandleTypeDef huart2;
 extern I2C_HandleTypeDef hi2c3;
-
 extern uint16_t service_hndl, txchar_hndl, rxchar_hndl;
+extern bool paired;
 
+/* GLOBAL VARIABLES */
 float left_power = 0.0;
 float right_power = 0.0;
+uint8_t send_values[16];
+uint32_t prev_updatechar_ticks = 0;
+uint32_t prev_localize_ticks = 0;
+uint8_t irq_ignore_count = 4;
 
-extern bool paired;
+/* GLOBAL OBJECTS */
 
 // L PWM PB4 3/1; DIR PB5, PA10; ENC PC2,  PC3
 // R PWM PC7 3/2; DIR PC0, PA9;  ENC PA15, PB7
@@ -55,10 +63,23 @@ DCMotor right_wheel = {
     .htim_enc = &htim2,
 };
 
+TwoWheelTracker tracker = {
+    .left_wheel = &left_wheel,
+    .right_wheel = &right_wheel,
+    .ticks_per_rev = 28,
+    .wheel_radius = 0.021, // 21mm (approx. update later)
+    .track_width = 0.24    // 240mm (approx. update later)
+};
+
+/* PRIVATE FUNCTION DECLARATIONS */
+
+/* FUNCTION DEFINITINS */
+
 void user_init() {
-    HAL_TIM_Base_Start(&htim5);
+    HAL_TIM_Base_Start(&htim5); // general timer
     DCMotor_Init(&left_wheel);
     DCMotor_Init(&right_wheel);
+    TwoWheelTracker_Init(&tracker);
     MX_BlueNRG_2_Init();
 }
 
@@ -74,15 +95,10 @@ bool compareTimer(uint32_t * prevTimer, uint32_t delay) {
     return delayReached;
 }
 
-uint8_t send_values[16];
-uint32_t prev_updatechar_ticks = 0;
-
-uint8_t irq_ignore_count = 4;
-
 void user_loop() {
     MX_BlueNRG_2_Process();
 
-    // 500ms loop
+    // 250ms loop
     if (compareTimer(&prev_updatechar_ticks, 64000*250)) {
         if (irq_ignore_count > 0) {
             irq_ignore_count--;
@@ -95,16 +111,32 @@ void user_loop() {
             // memcpy(&(send_values[0]), &(left_ticks),  sizeof(uint64_t));
             // memcpy(&(send_values[8]), &(right_ticks), sizeof(uint64_t));
 
-            float left_rate = left_wheel.rate_filtered;
-            float right_rate = right_wheel.rate_filtered;
-            memcpy(&(send_values[0]), &(left_rate),  sizeof(float));
-            memcpy(&(send_values[4]), &(right_rate), sizeof(float));
+            // float left_rate = left_wheel.rate_filtered;
+            // float right_rate = right_wheel.rate_filtered;
+            // memcpy(&(send_values[0]), &(left_rate),  sizeof(float));
+            // memcpy(&(send_values[4]), &(right_rate), sizeof(float));
+
+            float x = tracker.position.x;
+            float y = tracker.position.y;
+            float heading = tracker.heading;
+            memcpy(&(send_values[0]), &(x), sizeof(float));
+            memcpy(&(send_values[4]), &(y), sizeof(float));
+            memcpy(&(send_values[8]), &(heading), sizeof(float));
 
             aci_gatt_update_char_value(service_hndl, txchar_hndl, 0,
                                        16, send_values);
         }
     }
+
+    // 100ms loop
+    if (compareTimer(&prev_updatechar_ticks, 64000*100)) {
+        if (paired && irq_ignore_count == 0) {
+            TwoWheelTracker_Update(&tracker, 0.1F);
+        }
+    }
 }
+
+/* CALLBACKS */
 
 // handle when attribute changes its value (ie. we receive data)
 void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
