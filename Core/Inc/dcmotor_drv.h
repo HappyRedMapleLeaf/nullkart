@@ -27,7 +27,7 @@ typedef struct {
     volatile float rateAvgBuffer[RATE_AVG_BUF_SIZE];
     volatile uint16_t rateAvgIdx;
     volatile float rateAvgSum;
-    volatile float rate_filtered;
+    volatile float rate_filtered; // this is the one to use. ticks per second.
     volatile int64_t ticks;
     volatile int64_t prev_ticks;
 } DCMotor;

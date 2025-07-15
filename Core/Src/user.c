@@ -34,10 +34,10 @@ DCMotor left_wheel = {
     .fwd_GPIO_pin = L_DIR_1_Pin,
     .rev_GPIO_port = L_DIR_2_GPIO_Port,
     .rev_GPIO_pin = L_DIR_2_Pin,
-    .enc_a_GPIO_port = L_ENC_1_GPIO_Port,
-    .enc_a_GPIO_pin = L_ENC_1_Pin,
-    .enc_b_GPIO_port = L_ENC_2_GPIO_Port,
-    .enc_b_GPIO_pin = L_ENC_2_Pin,
+    .enc_a_GPIO_port = L_ENC_2_GPIO_Port,
+    .enc_a_GPIO_pin = L_ENC_2_Pin,
+    .enc_b_GPIO_port = L_ENC_1_GPIO_Port,
+    .enc_b_GPIO_pin = L_ENC_1_Pin,
     .htim_enc = &htim2,
 };
 
@@ -77,18 +77,28 @@ bool compareTimer(uint32_t * prevTimer, uint32_t delay) {
 uint8_t send_values[16];
 uint32_t prev_updatechar_ticks = 0;
 
+uint8_t irq_ignore_count = 4;
+
 void user_loop() {
     MX_BlueNRG_2_Process();
 
     // 500ms loop
-    if (compareTimer(&prev_updatechar_ticks, 64000*500)) {
+    if (compareTimer(&prev_updatechar_ticks, 64000*250)) {
+        if (irq_ignore_count > 0) {
+            irq_ignore_count--;
+        }
         // update values in BLE characteristic (ie transmit data)
         if (paired) {
             // copy volatile values
-            uint64_t left_ticks = left_wheel.ticks;
-            uint64_t right_ticks = right_wheel.ticks;
-            memcpy(&(send_values[0]), &(left_ticks),  sizeof(uint64_t));
-            memcpy(&(send_values[8]), &(right_ticks), sizeof(uint64_t));
+            // uint64_t left_ticks = left_wheel.ticks;
+            // uint64_t right_ticks = right_wheel.ticks;
+            // memcpy(&(send_values[0]), &(left_ticks),  sizeof(uint64_t));
+            // memcpy(&(send_values[8]), &(right_ticks), sizeof(uint64_t));
+
+            float left_rate = left_wheel.rate_filtered;
+            float right_rate = right_wheel.rate_filtered;
+            memcpy(&(send_values[0]), &(left_rate),  sizeof(float));
+            memcpy(&(send_values[4]), &(right_rate), sizeof(float));
 
             aci_gatt_update_char_value(service_hndl, txchar_hndl, 0,
                                        16, send_values);
@@ -117,11 +127,15 @@ void aci_gatt_attribute_modified_event(uint16_t Connection_Handle,
 
 // currently every 10ms
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim) {
-	DCMotor_TIMCallback(&left_wheel, htim, 0.01F);
-	DCMotor_TIMCallback(&right_wheel, htim, 0.01F);
+    if (irq_ignore_count == 0) {
+        DCMotor_TIMCallback(&left_wheel, htim, 0.01F);
+        DCMotor_TIMCallback(&right_wheel, htim, 0.01F);
+    }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	DCMotor_GPIOCallback(&left_wheel, GPIO_Pin);
-	DCMotor_GPIOCallback(&right_wheel, GPIO_Pin);
+    if (irq_ignore_count == 0) {
+        DCMotor_GPIOCallback(&left_wheel, GPIO_Pin);
+        DCMotor_GPIOCallback(&right_wheel, GPIO_Pin);
+    }
 }

@@ -7,8 +7,8 @@ void DCMotor_Init(DCMotor *motor) {
     motor->rateAvgIdx = 0;
     motor->rateAvgSum = 0.0f;
     motor->rate_filtered = 0.0f;
-    motor->ticks = 0;
-    motor->prev_ticks = 0;
+    motor->ticks = 1000000000;
+    motor->prev_ticks = 1000000000;
 
     // Initialize rate average buffer
     for (int i = 0; i < RATE_AVG_BUF_SIZE; i++) {
