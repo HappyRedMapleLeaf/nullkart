@@ -1,13 +1,10 @@
 overall:
 clean up ble stuff
-give defaults to struct values that should be internal (separate config and instance?)
 add init functions
 fix naming
 comment
 
-ble reads
-test encoder module
-devise localization algorithm (wheels only)
+
 localization telemetry
 
 host:
