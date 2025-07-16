@@ -25,7 +25,7 @@ extern bool paired;
 /* GLOBAL VARIABLES */
 float left_power = 0.0;
 float right_power = 0.0;
-uint8_t send_values[16];
+uint8_t send_values[24];
 uint32_t prev_updatechar_ticks = 0;
 uint32_t prev_localize_ticks = 0;
 uint8_t irq_ignore_count = 4;
@@ -66,9 +66,9 @@ DCMotor right_wheel = {
 TwoWheelTracker tracker = {
     .left_wheel = &left_wheel,
     .right_wheel = &right_wheel,
-    .ticks_per_rev = 28,
-    .wheel_radius = 0.021, // 21mm (approx. update later)
-    .track_width = 0.24    // 240mm (approx. update later)
+    .ticks_per_rev = 1680, // 28 * 60
+    .wheel_radius = 0.031, // 31mm
+    .track_width = 0.239    // 239mm
 };
 
 /* PRIVATE FUNCTION DECLARATIONS */
@@ -119,18 +119,22 @@ void user_loop() {
             float x = tracker.position.x;
             float y = tracker.position.y;
             float heading = tracker.heading;
+            float l_rate = left_wheel.rate_filtered;
+            float r_rate = right_wheel.rate_filtered;
             memcpy(&(send_values[0]), &(x), sizeof(float));
             memcpy(&(send_values[4]), &(y), sizeof(float));
             memcpy(&(send_values[8]), &(heading), sizeof(float));
+            memcpy(&(send_values[12]), &(l_rate), sizeof(float));
+            memcpy(&(send_values[16]), &(r_rate), sizeof(float));
 
             aci_gatt_update_char_value(service_hndl, txchar_hndl, 0,
-                                       16, send_values);
+                                       24, send_values);
         }
     }
 
     // 100ms loop
-    if (compareTimer(&prev_updatechar_ticks, 64000*100)) {
-        if (paired && irq_ignore_count == 0) {
+    if (compareTimer(&prev_localize_ticks, 64000*100)) {
+        if (irq_ignore_count == 0) {
             TwoWheelTracker_Update(&tracker, 0.1F);
         }
     }

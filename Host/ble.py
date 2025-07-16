@@ -1,11 +1,14 @@
 import asyncio
 import struct
+import matplotlib.pyplot as plt
+import numpy as np
 from bleak import BleakScanner, BleakClient
 
 READ_MODE_2_UINT64 = 0
-READ_MODE_2_FLOAT = 1
-READ_MODE_3_FLOAT = 2
-read_mode = READ_MODE_2_FLOAT
+READ_MODE_6_FLOAT = 1
+read_mode = READ_MODE_6_FLOAT
+
+plt.ion()
 
 async def scan_target_device(target_device, scan_timeout):
     """Scan for BLE devices and return found devices"""
@@ -95,19 +98,36 @@ async def run_cli(client, WRITE_UUID, READ_UUID):
                 elif user_input[0] == 'r':
                     data = await client.read_gatt_char(READ_UUID)
                     
-                    if len(data) != 16:
+                    if len(data) != 24:
                         print("Unexpected data length received.")
                         continue
 
                     if read_mode == READ_MODE_2_UINT64:
-                        uint1, uint2 = struct.unpack('<QQ', data)
+                        uint1, uint2, _ = struct.unpack('<QQQ', data)
                         print(f"Read values: {uint1}, {uint2}")
-                    elif read_mode == READ_MODE_2_FLOAT:
-                        float1, float2, _, _ = struct.unpack('<ffff', data)
-                        print(f"Read values: {float1}, {float2}")
-                    elif read_mode == READ_MODE_3_FLOAT:
-                        float1, float2, float3, _ = struct.unpack('<ffff', data)
-                        print(f"Read values: {float1}, {float2}, {float3}")
+                    elif read_mode == READ_MODE_6_FLOAT:
+                        values = struct.unpack('<ffffff', data)
+                        print(f"Read values: {', '.join(map(str, values))}")
+
+                        x, y, heading = values[0], values[1], values[2]
+                        
+                        plt.clf()  # Clear current figure instead of creating new one
+                        plt.scatter(x, y, s=100, c='blue', marker='o')
+                        
+                        # Draw heading arrow
+                        arrow_length = 0.1
+                        dx = arrow_length * np.cos(heading)
+                        dy = arrow_length * np.sin(heading)
+                        plt.arrow(x, y, dx, dy, head_width=0.02, head_length=0.02, fc='red', ec='red')
+                        
+                        plt.xlabel('X Position (m)')
+                        plt.ylabel('Y Position (m)')
+                        plt.title(f'Robot Position: ({x:.3f}, {y:.3f}), Heading: {heading:.3f} rad')
+                        plt.grid(True)
+                        plt.xlim(-2, 2)
+                        plt.ylim(-2, 2)
+                        plt.draw()  # Update the plot without showing/focusing
+                        plt.pause(0.001)  # Brief pause to allow update
                 
             except Exception as e:
                 print(f"Error: {e}")

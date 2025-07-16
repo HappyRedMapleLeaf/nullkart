@@ -274,7 +274,7 @@ tBleStatus Add_Service() {
     COPY_UUID_128(uuid,0x6e,0x18,0xd6,0x7b,0x5f,0xd7,0x45,0x71,0x82,0x8e,0xfa,0x04,0xa3,0x17,0xf5,0xe3);
     BLUENRG_memcpy(&char_uuid.Char_UUID_128, uuid, 16);
     ret = aci_gatt_add_char(service_hndl, UUID_TYPE_128, &char_uuid,
-                            16, // 4 floats, x, y, heading, spare
+                            24, // 6 floats, x, y, heading, spare, spare, spare
                             CHAR_PROP_READ|CHAR_PROP_WRITE,
                             ATTR_PERMISSION_NONE,
                             GATT_DONT_NOTIFY_EVENTS,
